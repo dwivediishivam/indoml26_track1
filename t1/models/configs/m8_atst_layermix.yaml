@@ -1,0 +1,40 @@
+# M8 (Colab A100 40GB): ATST-F strong with all-layer mixing + mel CNN, NO validation audio (clean), seed 55, bank-only synthetic.
+# 10 s crops.
+name: m8_atst_layermix
+seed: 55
+backbone:
+  name: fusion
+  proj_dim: 512
+  part_dropout: 0.1
+  parts:
+    - name: atst_strong
+      checkpoint: /content/weights/ATST-F_strong_1.pt
+      layer_mix: true
+    - name: mel_cnn
+model:
+  hidden: 256
+sources:
+  gold: 0.40
+  silver: 0.27
+  bronze: 0.05
+  synthetic: 0.28
+  val_natural: 0.0
+synthetic:
+  factory: models.data:build_synthgen
+  kwargs:
+    exclude_folds: [4]
+    size: 1000000
+    seed: 55
+    max_seconds: 10.0
+    mixer: {}
+data:
+  crop_seconds: 10.0
+optim:
+  batch_size: 16
+  head_lr: 1.0e-3
+  encoder_lr: 1.0e-5
+  layer_decay: 0.85
+  freeze_steps: 1000
+  max_steps: 40000
+monitor:
+  folds: [4]

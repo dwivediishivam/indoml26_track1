@@ -1,0 +1,198 @@
+\documentclass[conference]{IEEEtran}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{url}
+\usepackage[hidelinks]{hyperref}
+\usepackage{microtype}
+
+\begin{document}
+
+\title{Multi-Backbone SED Ensembles with Snippet-Bank Matching for Indic Noise Event Detection}
+
+\author{\IEEEauthorblockN{Shivam Dwivedi, Animish Yadav, Shubhi Jain}
+\IEEEauthorblockA{Team TDS, Indraprastha Institute of Information Technology Delhi (IIIT Delhi), India\\
+\{shivam21352, animish23089, shubhi23517\}@iiitd.ac.in}}
+
+\maketitle
+
+\begin{abstract}
+We describe our Track~1 system for the Datathon@IndoML~2026 noise event detection challenge. The task is to
+localise class-agnostic onset/offset pairs of noise events in Indic speech from the Vaani corpus, scored by event
+F1 plus segment Dice~\cite{metrics}. Our system combines three parts. (i) An ensemble of twelve frame-level sound event detectors
+built on diverse pretrained encoders (ATST-F, BEATs, WavLM-base+/large, w2v-BERT~2.0), each fused with a mel-CNN
+and a BiGRU emitting 24 presence and boundary tracks. (ii) A \emph{snippet bank}: the organizers' synthetic mixtures
+reuse sample-exact noise snippets, which we isolate from validation pairs and detect with calibrated
+matched filtering. (iii) A routing decoder, tuned under test-mixture weighting, that merges bank and neural
+evidence per clip. Our final submission (Codabench 995227) reaches event F1 0.7711 and segment Dice 0.8232, a
+combined score of 1.5943 (rank~6), up from 1.2129 for our Phase~1 entry.
+\end{abstract}
+
+\section{Training Data and Preprocessing}
+\textbf{Vaani Noise Event Dataset}~\cite{vaani} (90,637 segments, 154.6\,h, seven noise categories).
+\begin{itemize}
+\item \emph{Gold} (verified timestamps; 11,111 segments, 21.8\,h) and \emph{Silver} (unverified timestamps; 61,642
+segments, 100.3\,h) provide frame targets.
+\item \emph{Bronze} (17,884 segments, 32.4\,h; tags without timestamps) trains a multiple-instance (MIL) clip head.
+\end{itemize}
+Audio is staged once into a float16 blob with a JSONL manifest.
+
+\textbf{IndoML validation set} (2,501 clips: 1,806 natural, 695 synthetic with clean references). It is split into
+five folds. Fold~4 (479 clips: 344 natural, 135 synthetic) is the monitor and selection hold-out. Natural clips of
+folds 0--3 are an extra training source for six of the twelve members; the other six never see validation audio.
+
+\textbf{Targets.} Each clip yields 24 channels at a 20\,ms frame rate: union presence, seven category presence
+tracks, and union plus per-category onset/offset tracks (Gaussian boundary targets).
+
+\textbf{Synthetic-mixture generator.} The synthetic clips are built as
+$\text{noisy}=\text{clean}+\sum_i g_i\,\text{snippet}_i$, with labels exact to the sample. We regenerate such mixtures
+on the fly, using event counts, gaps ($\geq$200\,ms), gains and durations measured on the 695 validation synthetic
+clips.
+\begin{itemize}
+\item \emph{Noise:} the validation snippet bank and, for widened members, isolated Gold event spans.
+\item \emph{Speech:} validation clean references (held-out folds excluded) and Gold/Silver speech regions at least
+50\,ms from any event.
+\end{itemize}
+
+\textbf{Batches and augmentation.} Every batch mixes the sources in fixed proportions, for example Gold 0.40, Silver
+0.27, Bronze 0.05 and synthetic 0.28. Crops are event-biased: 80\% contain a whole event and 10\% are hard negatives,
+with 10\,s crops (4\,s for the breath specialist). Augmentations are random gain, label-preserving whole-frame time
+shifts, label-union mixup within a tier, FilterAugment~\cite{filteraug} band gains, and optional Freq-MixStyle.
+
+\section{Proposed Method}
+\subsection{Neural SED members}
+Each member fuses a pretrained encoder with a mel-CNN (512-dimensional projection, part dropout 0.1). A masked
+2-layer BiGRU (hidden size 256) then outputs the 24 tracks, alongside a linear-softmax MIL head with seven clip
+logits.
+
+\textbf{Pretrained encoders:}
+\begin{itemize}
+\item ATST-F strong and BEATs strong~\cite{pretrainedsed,atst,beats}, from the PretrainedSED release v0.0.1;
+\item \texttt{microsoft/wavlm-base-plus} and \texttt{wavlm-large}~\cite{wavlm};
+\item \texttt{facebook/w2v-bert-2.0}~\cite{w2vbert}.
+\end{itemize}
+
+\textbf{The twelve members:}
+\begin{itemize}
+\item \texttt{m1} (ATST-F) and \texttt{m4} (WavLM-base+ breath specialist: 4\,s crops, human non-speech channels
+weighted $\times3$);
+\item \texttt{m7} and \texttt{m8} (ATST-F with seed 77, and with all-layer mixing);
+\item \texttt{m1v}, \texttt{m1g} and \texttt{m6} (ATST-F, also trained on validation-natural clips; \texttt{m1g}
+continues on Gold data);
+\item \texttt{m2} (BEATs), \texttt{m3} (WavLM-large) and \texttt{m5} (w2v-BERT), trained with widened mixtures that
+add Gold events;
+\item our Phase~1 WavLM-base+ detectors \texttt{s9000} and \texttt{s1600}, which use learned layer weights, a
+BiGRU, 1+7+64 tracks, boundary heatmaps and attention-MIL.
+\end{itemize}
+
+\textbf{Losses.}
+\begin{itemize}
+\item presence: BCE or focal loss per track, plus a soft-Dice loss on the union track;
+\item boundaries: RED-style focal loss on the onset/offset tracks;
+\item Bronze clips: MIL loss only;
+\item tier weights (presence / boundary): Gold 1.0/1.0, Silver 0.5/0.1, synthetic 1.0/1.0, validation natural
+1.5/1.5. Silver background frames are weighted $\times0.5$.
+\end{itemize}
+
+\textbf{Training.}
+\begin{itemize}
+\item Stage~1 trains the new modules with the encoder frozen (1,000--1,500 steps, learning rate $10^{-3}$).
+\item Stage~2 unfreezes the encoder (learning rate $1$--$2{\cdot}10^{-5}$, layer-wise decay 0.85--0.9).
+\item AdamW, bf16, gradient clipping, and EMA weights~\cite{meanteacher} throughout.
+\item A cosine schedule is fitted to a wall-clock deadline from measured step times.
+\item A fold-4 monitor keeps the two best checkpoints (student or EMA).
+\end{itemize}
+
+\textbf{Inference} uses 10\,s windows with a 5\,s hop, triangular overlap weights (floor 0.3), and time-shift TTA
+over $\{0,\pm20\}$\,ms.
+
+\subsection{Snippet bank}
+Subtracting clean from noisy audio at the labelled spans of the 695 validation synthetic pairs isolates 2,213
+events, which deduplicate to \textbf{206 distinct snippets}.
+
+\textbf{Candidate generation.} For every snippet, normalised cross-correlation (NCC) is computed against each clip
+via FFT. Up to three peaks with $\text{NCC}\geq0.35$ are kept per snippet. Edge sub-templates (the first or last
+250\,ms) catch events that the clip boundary truncates.
+
+\textbf{Scoring.} Each candidate is described by its NCC, a \emph{chunk-lag consistency} score (whether every 50\,ms
+chunk peaks at the same lag, a property of sample-exact copies but not of natural look-alikes), the implied SNR,
+the snippet duration, and an edge flag. A logistic model calibrated leave-fold-out maps these features to a match
+probability, and greedy non-maximum suppression produces the bank events.
+
+\subsection{Fusion, routing and decoding}
+\textbf{Fusion.} The member caches are fused in the logit domain. The final configuration (\texttt{clean\_plus\_a30})
+gives 70\% of the fusion mass to the six members never trained on validation audio and 5\% to each of the other
+six.
+
+\textbf{Routing.} A calibrated synthetic score sends each clip down one of three paths:
+\begin{itemize}
+\item \emph{bank}: bank events above 0.56 confidence, merged with neural events above 0.64 confidence (margin 0.18,
+gap 200\,ms, at most five events);
+\item \emph{natural}: a category-aware hysteresis decoder (thresholds 0.85/0.61, median filter of 5 frames, minimum
+40\,ms, merge gap 160\,ms, boundary padding $-20/-30$\,ms) that splits blobs whose category tracks disagree, so
+overlapping events of different types become separate events;
+\item \emph{prior}: a fallback. No clip is ever left empty.
+\end{itemize}
+
+\textbf{Tuning.} All thresholds and fusion weights are searched with Optuna TPE~\cite{optuna} on validation, with
+synthetic clips weighted $\times1.57$ to match the test mixture of 2,080 synthetic and 3,437 natural clips. The tuner
+reports a 5-fold CV estimate next to the full-validation score.
+
+\section{Results and Conclusion}
+\begin{table}[t]
+\centering
+\caption{Combined score (event F1 + segment Dice) on validation and on the Codabench test set. Ensembles with
+validation-trained members include training folds in the 2,501-clip column; fold~4 is held out.}
+\label{tab:res}
+\footnotesize
+\setlength{\tabcolsep}{3.2pt}
+\begin{tabular}{llccc}
+\toprule
+ID & Configuration & Val. (2,501) & Fold 4 (479) & Test\\
+\midrule
+938975 & \texttt{s9000}+\texttt{s1600} (Phase 1) & 1.134 & -- & 1.2129\\
+995013 & interim, clean members & 1.468 & 1.466 & 1.5803\\
+995109 & all 12, fold-4 tuned, test-mix & 1.541 & 1.512 & 1.5854\\
+995114 & all 12, fold-4 tuned & 1.541 & 1.512 & 1.5857\\
+995138 & clean members, test-mix & 1.482 & 1.465 & 1.5875\\
+\textbf{995227} & \textbf{clean + 30\% others} & 1.533 & 1.480 & \textbf{1.5943}\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:res} lists our Phase~1 entry and every Phase~2 submission.
+\begin{itemize}
+\item \textbf{Final entry (995227):} event F1 0.7711 and segment Dice 0.8232 on the 5,517 test clips, combined
+1.5943. It routes 1,974 clips through the bank (the test set has 2,080 synthetic clips), 3,482 through the natural
+decoder and 61 through the prior, emitting 13,268 events.
+\item \textbf{The bank transfers to the test set.} Event F1 rose from 0.47 for our Phase~1 entry to 0.77.
+\item \textbf{Members trained only on non-validation audio generalise best.} \texttt{clean\_full\_tm} scores lower than
+\texttt{final\_f4\_tm} on validation but higher on the test set. Re-adding the validation-trained members at 30\%
+total weight gave the best test score.
+\item \textbf{Category-aware decoding matters for natural clips.} About 30\% of consecutive natural event pairs
+overlap, and splitting fused blobs by category track recovers them as separate events.
+\end{itemize}
+
+\textbf{Novelty.} Our contributions are (i) exploiting the reuse structure of the synthetic mixtures with
+calibrated, consistency-checked matched filtering; (ii) a generator that reproduces the organizers' mixtures with
+labels exact to the sample, used for training; (iii) a heterogeneous ensemble spanning five pretrained encoders,
+fused in logits under a held-out-aware weighting; and (iv) test-mixture-weighted decoder tuning with routing.
+
+\textbf{Conclusion.} Combining heterogeneous pretrained SED members with an explicit model of how the synthetic
+data was built gives a strong and well-calibrated detector. Natural clips remain the harder half; better
+boundary modelling of overlapping natural events is the main avenue for improvement.
+
+\bibliographystyle{IEEEtran}
+\begin{thebibliography}{10}\setlength{\itemsep}{0pt}\footnotesize
+\bibitem{vaani} S.~Pulikodan \emph{et~al.}, ``VAANI: Capturing the language landscape for an inclusive digital India,'' arXiv:2603.28714, 2026.
+\bibitem{pretrainedsed} F.~Schmid, T.~Morocutti, F.~Foscarin, J.~Schl\"uter, P.~Primus, and G.~Widmer, ``Effective pre-training of audio transformers for sound event detection,'' in \emph{Proc. ICASSP}, 2025.
+\bibitem{atst} X.~Li, N.~Shao, and X.~Li, ``Self-supervised audio teacher-student transformer for both clip-level and frame-level tasks,'' \emph{IEEE/ACM TASLP}, 2024.
+\bibitem{beats} S.~Chen \emph{et~al.}, ``BEATs: Audio pre-training with acoustic tokenizers,'' in \emph{Proc. ICML}, 2023.
+\bibitem{wavlm} S.~Chen \emph{et~al.}, ``WavLM: Large-scale self-supervised pre-training for full stack speech processing,'' \emph{IEEE JSTSP}, 2022.
+\bibitem{w2vbert} Seamless Communication \emph{et~al.}, ``Seamless: Multilingual expressive and streaming speech translation,'' arXiv:2312.05187, 2023.
+\bibitem{filteraug} H.~Nam, S.-H.~Kim, and Y.-H.~Park, ``FilterAugment: An acoustic environmental data augmentation method,'' in \emph{Proc. ICASSP}, 2022.
+\bibitem{meanteacher} A.~Tarvainen and H.~Valpola, ``Mean teachers are better role models,'' in \emph{Proc. NeurIPS}, 2017.
+\bibitem{optuna} T.~Akiba \emph{et~al.}, ``Optuna: A next-generation hyperparameter optimization framework,'' in \emph{Proc. KDD}, 2019.
+\bibitem{metrics} A.~Mesaros, T.~Heittola, and T.~Virtanen, ``Metrics for polyphonic sound event detection,'' \emph{Applied Sciences}, vol.~6, 2016.
+\end{thebibliography}
+
+\end{document}

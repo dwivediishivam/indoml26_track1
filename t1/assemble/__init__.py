@@ -1,0 +1,1 @@
+"""Submission assembly and validation."""

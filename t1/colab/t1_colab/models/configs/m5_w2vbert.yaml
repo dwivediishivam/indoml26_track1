@@ -1,0 +1,41 @@
+# M5: w2v-BERT 2.0 (learned layer mix) + mel CNN fusion, with validation natural clips (folds 0-3);
+# fold 4 held out. 600M encoder: gradient checkpointing on, batch 12.
+name: m5_w2vbert
+seed: 37
+backbone:
+  name: fusion
+  proj_dim: 512
+  part_dropout: 0.1
+  parts:
+    - name: w2vbert
+      model: facebook/w2v-bert-2.0
+      path: ~/indoml-offline/model/w2v-bert-2.0
+      grad_ckpt: true
+    - name: mel_cnn
+model:
+  hidden: 256
+data:
+  val_holdout_folds: [4]
+sources:
+  gold: 0.35
+  silver: 0.25
+  bronze: 0.05
+  synthetic: 0.25
+  val_natural: 0.10
+synthetic:
+  factory: models.data:build_synthgen
+  kwargs:
+    exclude_folds: [4]
+    size: 1000000
+    seed: 37
+    max_seconds: 10.0
+    mixer: {widen_prob: 0.25, sources: {noise: {gold: {weight: 0.6}}, speech: {gold_speech: {weight: 0.5}}}}   # bank + Gold events, widened for natural robustness
+optim:
+  batch_size: 12
+  head_lr: 1.0e-3
+  encoder_lr: 2.0e-5
+  layer_decay: 0.9
+  freeze_steps: 1500
+  max_steps: 40000
+monitor:
+  folds: [4]

@@ -1,0 +1,133 @@
+# synthgen defaults, measured on 695 validation synthetic clips (2,213 events).
+# Format note: block mappings with JSON-literal values only (no flow dicts, no leading '+', floats written
+# with a dot such as 1.0e-6) so mixer.mini_yaml can read it on hosts without PyYAML.
+# Distribution specs (see mixer.Dist): number | [lo, hi] uniform | {probs, values} quantile knots
+# (inverse CDF, linear) | {values, weights} discrete. q0/q100 knots marked "extrap." were not measured.
+
+widen_prob: 0.0              # fraction of samples drawn with the `widen` overrides at the bottom
+max_tries: 64                # rejection attempts (clip duration + snippets + edges) before degrading
+edge_tries: 8                # first-onset/tail redraws per attempt
+
+clip_duration_mode: "config" # "config": draw from clip_duration; "speech": natural length of the drawn clean clip
+clip_max_s: 10.0             # hard cap on rendered clip length
+clip_duration:               # s; q05 3.1, q10 3.28, q25 3.83, q50 4.55, q75 6.04, q90 7.83, q95 9.22
+  probs: [0.0, 0.05, 0.10, 0.25, 0.50, 0.75, 0.90, 0.95, 1.0]
+  values: [2.5, 3.1, 3.28, 3.83, 4.55, 6.04, 7.83, 9.22, 10.0]       # q0, q100 extrap.
+
+n_events:                    # events per clip, counts out of 695
+  values: [1, 2, 3, 4, 5]
+  weights: [110, 78, 124, 340, 43]
+
+gap_min_s: 0.2               # min silence between consecutive events (measured minimum 0.200)
+first_onset:                 # s before the first onset; 10% quantiles
+  probs: [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+  values: [0.003, 0.267, 0.303, 0.37, 0.461, 0.588, 0.759, 0.959, 1.343, 2.078, 3.0]   # q100 extrap.
+last_tail:                   # s after the last offset; 10% quantiles
+  probs: [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+  values: [0.0, 0.267, 0.311, 0.374, 0.435, 0.534, 0.686, 1.037, 1.397, 2.237, 3.2]    # q100 extrap.
+edge_slack_weight: 0.0       # Dirichlet weight of lead/tail when spreading leftover time (each gap has 1);
+                             # 0 keeps first_onset/last_tail as drawn when >= 2 events
+
+event_duration:              # s; measured event lengths, used as the crop target
+  probs: [0.0, 0.05, 0.10, 0.25, 0.50, 0.75, 0.90, 0.95, 0.99, 1.0]
+  values: [0.125, 0.172, 0.203, 0.332, 0.525, 0.702, 1.06, 1.8, 3.33, 9.08]
+event_min_s: 0.125
+event_max_s: 9.5             # longer snippets are always cropped
+crop:
+  prob: 0.0                  # P(crop a snippet longer than min_snippet_s); a source's crop_prob overrides it
+  min_snippet_s: 0.5
+
+snr_db:                      # clean power (whole clip) / noise power (inside the event)
+  probs: [0.0, 0.05, 0.25, 0.50, 0.75, 0.95, 1.0]
+  values: [-15.0, -12.3, -9.3, -4.7, 2.8, 3.9, 5.0]                 # q0, q100 extrap.
+snr_per_clip: false          # true: one SNR draw shared by all events of a clip
+fade_ms: 0.0                 # raised-cosine fade inside each span edge (labels unchanged)
+overlap_prob: 0.0            # per-event P(placed uniformly at random, ignoring no-overlap/gap rules)
+speech_gain_db: 0.0          # gain on clean speech before mixing (does not change SNRs)
+peak_limit: 0.99             # scale mix and clean by the same factor if max |x| exceeds this
+min_clean_power: 1.0e-6      # floor for clean power in the SNR formula (near-silent speech)
+min_noise_power: 1.0e-10     # snippets quieter than this are dropped (no label without audible noise)
+
+tag_freq:                    # synthetic event tags (validation); tag_prior for gold/folder sources
+  "horn": 591
+  "[breathing]": 544
+  "bird sound": 289
+  "bird squawking": 140
+  "child talking": 108
+  "[inhaling]": 94
+  "child yelling": 66
+  "barking": 50
+  "vehicle noise": 35
+  "animal sound": 34
+  "machine noise": 29
+  "phone ringing": 23
+  "[lip smacking]": 23
+  "ringing": 22
+  "music": 22
+  "dog barking": 21
+  "child crying": 19
+  "bell sound": 17
+  "baby talking": 15
+  "bird chirping": 13
+  "beep": 9
+  "baby crying": 8
+  "child noise": 8
+  "phone sound": 7
+  "whistling": 6
+
+sources:                     # used by mixer.build_mixer; weight 0 disables a source (paths relative to ROOT)
+  noise:
+    bank:
+      weight: 1.0
+      dir: "work/bank"       # snippets.npz + snippets.json written by bank/
+      uniform: false         # false: p ~ uses; true: every snippet equally likely
+      exclude_heldout: false # also drop snippets whose source_clip is held out
+    gold:
+      weight: 0.0
+      data_dir: "~/indoml-work/data"
+      tiers: ["gold"]
+      min_dur: 0.12
+      max_dur: 9.5
+      isolation: 0.0         # extra margin (s) required around a span to call it isolated
+      tag_prior: true        # reweight spans so tags follow tag_freq
+      crop_prob: 0.5
+    folder:
+      weight: 0.0
+      dir: null
+      csv: null
+      trim_db: 40.0
+      tag_prior: true
+      crop_prob: 0.5
+  speech:
+    val_clean:
+      weight: 1.0
+      exclude_folds: []      # folds (work/folds.json) whose clean refs are never used
+      splice_prob: 0.0
+    gold_speech:
+      weight: 0.0
+      data_dir: "~/indoml-work/data"
+      tiers: ["gold", "silver"]
+      margin_s: 0.05
+      min_len_s: 1.5
+      splice_prob: 0.3
+
+widen:                       # robustness overrides (natural clips), merged over the values above
+  n_events:
+    values: [0, 1, 2, 3, 4, 5, 6]
+    weights: [0.08, 0.14, 0.15, 0.16, 0.18, 0.15, 0.14]
+  gap_min_s: 0.05
+  first_onset:
+    probs: [0.0, 0.2, 0.8, 1.0]
+    values: [0.0, 0.05, 1.5, 4.0]
+  last_tail:
+    probs: [0.0, 0.2, 0.8, 1.0]
+    values: [0.0, 0.05, 1.5, 4.0]
+  edge_slack_weight: 0.5
+  crop:
+    prob: 0.5
+  snr_db:
+    probs: [0.0, 0.1, 0.5, 0.9, 1.0]
+    values: [-20.0, -14.0, -4.0, 8.0, 15.0]
+  overlap_prob: 0.15
+  fade_ms: [0.0, 40.0]
+  speech_gain_db: [-12.0, 6.0]

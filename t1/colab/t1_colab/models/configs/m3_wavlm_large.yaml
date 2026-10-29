@@ -1,0 +1,42 @@
+# M3: WavLM-large (learned layer mix over all hidden states) + mel CNN fusion, with validation natural
+# clips (folds 0-3); fold 4 held out.
+name: m3_wavlm_large
+seed: 29
+backbone:
+  name: fusion
+  proj_dim: 512
+  part_dropout: 0.1
+  parts:
+    - name: wavlm
+      model: microsoft/wavlm-large
+      path: ~/indoml-offline/model/wavlm-large
+      layerdrop: 0.0
+      grad_ckpt: false
+    - name: mel_cnn
+model:
+  hidden: 256
+data:
+  val_holdout_folds: [4]
+sources:
+  gold: 0.35
+  silver: 0.25
+  bronze: 0.05
+  synthetic: 0.25
+  val_natural: 0.10
+synthetic:
+  factory: models.data:build_synthgen
+  kwargs:
+    exclude_folds: [4]
+    size: 1000000
+    seed: 29
+    max_seconds: 10.0
+    mixer: {widen_prob: 0.25, sources: {noise: {gold: {weight: 0.6}}, speech: {gold_speech: {weight: 0.5}}}}   # bank + Gold events, widened for natural robustness
+optim:
+  batch_size: 16
+  head_lr: 1.0e-3
+  encoder_lr: 2.0e-5
+  layer_decay: 0.9
+  freeze_steps: 1500
+  max_steps: 40000
+monitor:
+  folds: [4]

@@ -1,0 +1,11 @@
+{
+  "commit": "1aa47e482f7e89904cba2338999345025d8b4e36",
+  "repo": "https://github.com/fschmid56/PretrainedSED",
+  "changes": "Imports made package-relative (models.beats.X -> .X); BEATs.py: torchaudio.compliance.kaldi import wrapped in try/except. No other changes. Original BEATs code: https://github.com/microsoft/unilm/tree/master/beats (MIT, Copyright (c) 2022 Microsoft).",
+  "files": {
+    "BEATs.py": {"source": "https://raw.githubusercontent.com/fschmid56/PretrainedSED/1aa47e482f7e89904cba2338999345025d8b4e36/models/beats/BEATs.py", "upstream_sha256": "c7dba46d9f83a09b0096337816795a2239cbab5f9e979c558c57f15953667765"},
+    "backbone.py": {"source": "https://raw.githubusercontent.com/fschmid56/PretrainedSED/1aa47e482f7e89904cba2338999345025d8b4e36/models/beats/backbone.py", "upstream_sha256": "5df93ef883d2fea0f9a3763caa93690b706905094d6ec727f86f68a827b87c5d"},
+    "modules.py": {"source": "https://raw.githubusercontent.com/fschmid56/PretrainedSED/1aa47e482f7e89904cba2338999345025d8b4e36/models/beats/modules.py", "upstream_sha256": "c4b4170b1c4286717b606788f617a0a768af076cdeaaa9b1d35bf70d6c3859fe"},
+    "LICENSE": {"source": "https://raw.githubusercontent.com/fschmid56/PretrainedSED/1aa47e482f7e89904cba2338999345025d8b4e36/LICENSE", "upstream_sha256": "399acc6d903cfd65a6cd5baba6a99af3ee534d79161b07854c1a6ffeab3dc88b"}
+  }
+}

@@ -1,0 +1,313 @@
+{
+ "name": "interim_clean",
+ "fusion": {
+  "weights": {
+   "s9000": 0.309091,
+   "s1600": 0.0,
+   "m1_atst": 0.363636,
+   "m4_breath": 0.327273
+  },
+  "mode": "logit"
+ },
+ "natural": {
+  "family": "legacy",
+  "params": {
+   "hi": 0.94,
+   "lo": 0.7,
+   "smooth": 1,
+   "median": 5,
+   "min_dur": 0.04,
+   "merge_gap": 0.0,
+   "pad_on": -0.009999999999999995,
+   "pad_off": -0.03,
+   "split_drop": 0.0,
+   "track_thr": 0.30000000000000004,
+   "track_min": 0.26,
+   "track_cover": 0.9,
+   "track_iou": 0.2,
+   "use_cat": 1.0,
+   "use_tag": 0.0,
+   "bref": 0,
+   "bref_thr": 0.25
+  },
+  "post": {
+   "edge_tol": 0.04,
+   "fallback_len": 0.0
+  }
+ },
+ "synthetic": null,
+ "merge": {
+  "bank_on": true,
+  "gap": 0.2,
+  "max_events": 5,
+  "synth_thr": 0.6200000000000001,
+  "bank_p_thr": 0.39,
+  "margin": 0.18,
+  "neural_conf": 0.4,
+  "prior_mode": "merge",
+  "prior_thr": 0.341,
+  "prior_conf": 0.5
+ },
+ "caches": [
+  {
+   "name": "s9000",
+   "format": "legacy",
+   "val": "/Users/dwivediishivam/code/indoml/ai2/work/probs_s9000.npz",
+   "blind": "/Users/dwivediishivam/code/indoml/ai2/work/probs_blind_s9000.npz"
+  },
+  {
+   "name": "s1600",
+   "format": "legacy",
+   "val": "/Users/dwivediishivam/code/indoml/ai2/work/probs_s1600.npz",
+   "blind": "/Users/dwivediishivam/code/indoml/ai2/work/probs_blind_s1600.npz"
+  },
+  {
+   "name": "m1_atst",
+   "format": "contract",
+   "val": "work/caches_interim/m1_atst/val.npz",
+   "blind": "work/caches_interim/m1_atst/blind.npz"
+  },
+  {
+   "name": "m4_breath",
+   "format": "contract",
+   "val": "work/caches_interim/m4_breath/val.npz",
+   "blind": "work/caches_interim/m4_breath/blind.npz"
+  }
+ ],
+ "bank": {
+  "val": "/Users/dwivediishivam/code/indoml/t1_final/work/bank/val_events.jsonl",
+  "blind": "/Users/dwivediishivam/code/indoml/t1_final/work/bank/blind_events.jsonl"
+ },
+ "flat_params": {
+  "w_s9000": 0.85,
+  "w_s1600": 0.0,
+  "w_m1_atst": 1.0,
+  "w_m4_breath": 0.9,
+  "fusion_mode": "logit",
+  "nat_family": "legacy",
+  "nat_lg_hi": 0.94,
+  "nat_lg_lo_delta": 0.24,
+  "nat_lg_smooth": 1,
+  "nat_lg_median": 5,
+  "nat_lg_min_dur": 0.04,
+  "nat_lg_merge_gap": 0.0,
+  "nat_lg_pad_on": -0.009999999999999995,
+  "nat_lg_pad_off": -0.03,
+  "nat_lg_split_drop": 0.0,
+  "nat_lg_track_thr": 0.30000000000000004,
+  "nat_lg_track_min": 0.26,
+  "nat_lg_track_cover": 0.9,
+  "nat_lg_track_iou": 0.2,
+  "nat_lg_use_cat": 1.0,
+  "nat_lg_bref": 0,
+  "nat_lg_bref_thr": 0.25,
+  "nat_edge_tol": 0.04,
+  "nat_fallback_len": 0.0,
+  "syn_same": true,
+  "bank_on": true,
+  "synth_thr": 0.6200000000000001,
+  "bank_p_thr": 0.39,
+  "margin": 0.18,
+  "neural_conf": 0.4,
+  "prior_mode": "merge",
+  "prior_on": true,
+  "prior_frac": 0.55,
+  "prior_conf": 0.5
+ },
+ "metrics": {
+  "full": {
+   "event_f1": 0.6762399429677156,
+   "segment_dice": 0.7919880655972156,
+   "combined": 1.4682280085649313,
+   "tp": 3320,
+   "fp": 1342,
+   "fn": 1837,
+   "clips": 2501
+  },
+  "natural": {
+   "event_f1": 0.4119391916944753,
+   "segment_dice": 0.7135389025615398,
+   "combined": 1.1254780942560152,
+   "tp": 1111,
+   "fp": 1339,
+   "fn": 1833,
+   "clips": 1806
+  },
+  "synthetic": {
+   "event_f1": 0.9984180790960452,
+   "segment_dice": 0.995843012996396,
+   "combined": 1.994261092092441,
+   "tp": 2209,
+   "fp": 3,
+   "fn": 4,
+   "clips": 695
+  },
+  "per_fold": [
+   1.4999247424347475,
+   1.4464909740530039,
+   1.4288315169828936,
+   1.4997134463873911,
+   1.4662152503593533
+  ],
+  "routes": {
+   "natural": 1794,
+   "bank": 674,
+   "prior": 33
+  },
+  "verified_exact": {
+   "event_f1": 0.6762399429677156,
+   "segment_dice": 0.7919880655972156,
+   "combined": 1.4682280085649313,
+   "tp": 3320,
+   "fp": 1342,
+   "fn": 1837
+  }
+ },
+ "val_counts": {
+  "pred_hist_natural": {
+   "0": 0,
+   "1": 1333,
+   "2": 343,
+   "3": 101,
+   "4": 20,
+   "5": 6,
+   "6": 3,
+   "7": 0,
+   "8+": 0
+  },
+  "pred_hist_synthetic": {
+   "0": 0,
+   "1": 109,
+   "2": 79,
+   "3": 126,
+   "4": 338,
+   "5": 43,
+   "6": 0,
+   "7": 0,
+   "8+": 0
+  },
+  "ref_hist_natural": {
+   "0": 2,
+   "1": 1032,
+   "2": 506,
+   "3": 195,
+   "4": 49,
+   "5": 15,
+   "6": 5,
+   "7": 2,
+   "8+": 0
+  },
+  "ref_hist_synthetic": {
+   "0": 0,
+   "1": 110,
+   "2": 78,
+   "3": 124,
+   "4": 340,
+   "5": 43,
+   "6": 0,
+   "7": 0,
+   "8+": 0
+  },
+  "pred_events": 4662,
+  "ref_events": 5157,
+  "clips": 2501
+ },
+ "cv": {
+  "mode": "select",
+  "mean": 1.4669468751089674,
+  "std": 0.029774373086062057,
+  "per_fold": [
+   {
+    "fold": 0,
+    "trial": 3048,
+    "train": 1.4600916668851087,
+    "test": 1.4999247424347475,
+    "test_detail": {
+     "event_f1": 0.6951653944020356,
+     "segment_dice": 0.804759348032712,
+     "combined": 1.4999247424347475,
+     "tp": 683,
+     "fp": 252,
+     "fn": 347,
+     "clips": 526
+    }
+   },
+   {
+    "fold": 1,
+    "trial": 3006,
+    "train": 1.4745063506655613,
+    "test": 1.4433148774357973,
+    "test_detail": {
+     "event_f1": 0.6534954407294833,
+     "segment_dice": 0.7898194367063139,
+     "combined": 1.4433148774357973,
+     "tp": 645,
+     "fp": 296,
+     "fn": 388,
+     "clips": 520
+    }
+   },
+   {
+    "fold": 2,
+    "trial": 2833,
+    "train": 1.4783575324301783,
+    "test": 1.425566058927549,
+    "test_detail": {
+     "event_f1": 0.6571574121242996,
+     "segment_dice": 0.7684086468032493,
+     "combined": 1.425566058927549,
+     "tp": 645,
+     "fp": 286,
+     "fn": 387,
+     "clips": 499
+    }
+   },
+   {
+    "fold": 3,
+    "trial": 3048,
+    "train": 1.4605892135971041,
+    "test": 1.4997134463873911,
+    "test_detail": {
+     "event_f1": 0.6925434116445353,
+     "segment_dice": 0.8071700347428559,
+     "combined": 1.4997134463873911,
+     "tp": 678,
+     "fp": 249,
+     "fn": 353,
+     "clips": 477
+    }
+   },
+   {
+    "fold": 4,
+    "trial": 3048,
+    "train": 1.4686738906937813,
+    "test": 1.4662152503593533,
+    "test_detail": {
+     "event_f1": 0.6789554531490015,
+     "segment_dice": 0.7872597972103519,
+     "combined": 1.4662152503593533,
+     "tp": 663,
+     "fp": 259,
+     "fn": 368,
+     "clips": 479
+    }
+   }
+  ]
+ },
+ "search": {
+  "label": "full",
+  "trial": 3048,
+  "origin": "refine",
+  "trials": 3072,
+  "elapsed_s": 900.9,
+  "objective": 1.4682280085649313,
+  "limit": 0,
+  "families": [
+   "legacy",
+   "hysteresis_per_category",
+   "csebb",
+   "peaks"
+  ],
+  "seed": 0
+ }
+}

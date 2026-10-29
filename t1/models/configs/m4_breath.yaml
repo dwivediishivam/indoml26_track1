@@ -1,0 +1,47 @@
+# M4 "breath": WavLM-base-plus + mel CNN fusion tuned for short human_non_speech events (breathing/inhaling
+# are 40% of natural events, median 0.33 s): human_non_speech presence + boundary channels x3, 4 s crops,
+# more Gold. Bronze is off because whole-clip Bronze crops would pad every 4 s batch to 10 s.
+name: m4_breath
+seed: 31
+backbone:
+  name: fusion
+  proj_dim: 512
+  part_dropout: 0.1
+  parts:
+    - name: wavlm
+      model: microsoft/wavlm-base-plus
+      path: ~/indoml-offline/model/wavlm-base-plus
+    - name: mel_cnn
+model:
+  hidden: 256
+data:
+  crop_seconds: 4.0
+  bronze_max_seconds: 4.0
+sources:
+  gold: 0.52
+  silver: 0.18
+  bronze: 0.0
+  synthetic: 0.30
+  val_natural: 0.0
+synthetic:
+  factory: models.data:build_synthgen
+  kwargs:
+    exclude_folds: [4]
+    size: 1000000
+    seed: 31
+    max_seconds: 4.0
+    mixer: {}
+augment:
+  time_shift_max_frames: 10
+loss:
+  channel_multipliers:
+    human_non_speech: 3.0
+optim:
+  batch_size: 32
+  head_lr: 1.0e-3
+  encoder_lr: 2.0e-5
+  layer_decay: 0.85
+  freeze_steps: 1500
+  max_steps: 60000
+monitor:
+  folds: [4]

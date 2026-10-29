@@ -1,0 +1,12 @@
+# large artefacts are hosted on Hugging Face (see checkpoints/README.md)
+checkpoints/*.pt
+caches/
+# competition data is not redistributed
+t1/data/blind/audio/*
+t1/data/val/*
+t1/work/bank/*
+t1/work/caches*/
+*.pyc
+__pycache__/
+.DS_Store
+!**/.gitkeep

@@ -1,0 +1,41 @@
+# M1v: M1 + validation natural clips (folds 0-3) in training; fold 4 held out for monitoring.
+# Every key not listed here takes its default from models/config.py (DEFAULTS); unknown keys are errors.
+# Paths are placeholders under ~/indoml-offline/model; override with --set, e.g.
+#   --set backbone.parts.0.checkpoint=/path/ATST-F_strong_1.pt
+name: m1v_atst_val
+seed: 19
+backbone:
+  name: fusion
+  proj_dim: 512
+  part_dropout: 0.1
+  parts:
+    - name: atst_strong
+      checkpoint: ~/indoml-offline/model/ATST-F_strong_1.pt
+    - name: mel_cnn
+model:
+  hidden: 256
+sources:
+  gold: 0.35
+  silver: 0.25
+  bronze: 0.05
+  synthetic: 0.25
+  val_natural: 0.10
+synthetic:
+  factory: models.data:build_synthgen
+  kwargs:
+    exclude_folds: [4]          # must contain every monitor fold
+    size: 1000000
+    seed: 19
+    max_seconds: 10.0
+    mixer: {}                   # synthgen.build_mixer overrides (synthgen/config_default.yaml)
+optim:
+  batch_size: 16
+  head_lr: 1.0e-3
+  encoder_lr: 1.0e-5
+  layer_decay: 0.85
+  freeze_steps: 1500
+  max_steps: 40000
+monitor:
+  folds: [4]
+data:
+  val_holdout_folds: [4]
