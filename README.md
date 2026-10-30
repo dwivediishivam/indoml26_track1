@@ -103,7 +103,7 @@ time-shift test-time augmentation over {0, +20, −20} ms. The result is a float
 
 **Decoding** (`t1/decode/`, `t1/assemble/`). The final configuration is `configs/clean_plus_a30.json`:
 - **Fusion:** logit averaging of the 12 caches. 70% of the mass goes to the six members never trained on
-  validation audio (`clean`), and 5% each to the other six (`plus_a30`).
+  validation natural clips (`clean`), and 5% each to the other six (`plus_a30`).
 - **Natural decoder:** hysteresis 0.85 / 0.61, median filter of 5 frames, minimum duration 40 ms, merge gap 160 ms,
   padding −20 / −30 ms, and category-track splitting of fused blobs (threshold 0.30, cover 0.90, IoU 0.30).
 - **Bank merge:** synthetic threshold 0.32, bank confidence 0.56, margin 0.18, neural confidence 0.64, gap 200 ms,
@@ -131,7 +131,7 @@ Findings:
   Event F1 rose from 0.47 for our Phase 1 entry to 0.77.
 - **The neural ensemble carries the natural clips.** The category-aware decoder splits overlapping events into
   separate tracks, which matters because 30% of consecutive natural event pairs overlap.
-- **Members never trained on validation audio gave the most reliable test gains.** `clean_full_tm`, with six such
+- **Members never trained on validation natural clips gave the most reliable test gains.** `clean_full_tm`, with six such
   members, scores lower on validation than `final_f4_tm` but higher on the test set. Adding the other six at 30% total
   weight (`clean_plus_a30`) gave the best test score.
 
